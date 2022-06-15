@@ -1,0 +1,53 @@
+name: CI
+
+on:
+  push:
+    branches:
+      - main
+  pull_request:
+    branches:
+      - "**"
+  schedule:
+    - cron: '3 3 * * 2'  # 3:03 AM, every Tuesday
+
+concurrency:
+  group: ${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  # macOS:
+  #   name: ${{ matrix.platform }}
+  #   runs-on: macos-12
+  #   strategy:
+  #     fail-fast: false
+  #     matrix:
+  #       platform:
+  #         - iOS
+  #         - macOS
+  #   steps:
+  #   - uses: actions/checkout@v2
+  #   - uses: mxcl/xcodebuild@v1
+  #     with:
+  #       swift: ~5.6
+  #       scheme: SwiftEncore
+  #       platform: ${{ matrix.platform }}
+  linux:
+    runs-on: ubuntu-latest
+    container: swift:5.6
+    steps:
+    - uses: actions/checkout@v2
+    - name: Run tests (thread sanitizer ON)
+      run: |
+        swift test \
+          --skip NilGuardingOperatorsTests.UnwrapOrExitTests/test \
+          --skip ExtensionsTests.StringTests/testRandom \
+          --parallel \
+          --sanitize=thread \
+          -Xswiftc -warnings-as-errors
+    - name: Run tests (thread sanitizer OFF)
+      run: |
+        swift test \
+          --filter NilGuardingOperatorsTests.UnwrapOrExitTests/test \
+          --filter ExtensionsTests.StringTests/testRandom \
+          --parallel \
+          -Xswiftc -warnings-as-errors

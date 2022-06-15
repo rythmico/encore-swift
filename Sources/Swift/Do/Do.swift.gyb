@@ -1,0 +1,85 @@
+precedencegroup DoPrecedence {
+    assignment: true
+    associativity: left
+    higherThan: AssignmentPrecedence
+}
+
+infix operator => : DoPrecedence
+
+// MARK: - Do (Value Types) -
+% for is_async in [False, True]:
+% availability = "\n".join(["", "@available(macOS 12, iOS 15, watchOS 8, tvOS 15, *)"]) if is_async else ""
+% async_label = " async " if is_async else " "
+% await_label = " await " if is_async else " "
+${availability}
+@_disfavoredOverload
+@discardableResult
+@inlinable
+public func => <Subject>(subject: Subject, do: (inout Subject)${async_label}throws -> Void)${async_label}rethrows -> Subject {
+    var copy = subject
+    try${await_label}`do`(&copy)
+    return copy
+}
+% end
+
+// MARK: - Do (Reference Types) -
+% for is_async in [False, True]:
+% availability = "\n".join(["", "@available(macOS 12, iOS 15, watchOS 8, tvOS 15, *)"]) if is_async else ""
+% async_label = " async " if is_async else " "
+% await_label = " await " if is_async else " "
+${availability}
+@discardableResult
+@inlinable
+public func => <Subject: AnyObject>(subject: Subject, do: (Subject)${async_label}throws -> Void)${async_label}rethrows -> Subject {
+    try${await_label}`do`(subject)
+    return subject
+}
+% end
+
+// MARK: - Mutate -
+
+public typealias Mutation<Subject, Value> = (
+    set: WritableKeyPath<Subject, Value>,
+    to: Value
+)
+
+@discardableResult
+@inlinable
+public func => <Subject, Value>(subject: Subject, mutation: Mutation<Subject, Value>) -> Subject {
+    subject => { $0[keyPath: mutation.set] = mutation.to }
+}
+
+// MARK: - Assign (Value Types) -
+
+public typealias AssignmentToValue<Pointee, Subject> = (
+    assignTo: UnsafeMutablePointer<Pointee>,
+    WritableKeyPath<Pointee, Subject>
+)
+% for keypath_value_type in ['Subject', 'Subject?']:
+
+@discardableResult
+@inlinable
+public func => <Subject, Pointee>(subject: Subject, assignment: AssignmentToValue<Pointee, ${keypath_value_type}>) -> Subject {
+    subject => { assignment.assignTo.pointee[keyPath: assignment.1] = $0 }
+}
+% end
+
+prefix operator /&
+public prefix func /& <Value>(_ value: inout Value) -> UnsafeMutablePointer<Value> {
+    withUnsafeMutablePointer(to: &value) { $0 }
+}
+
+// MARK: - Assign (Reference Types) -
+
+public typealias AssignmentToReference<Pointee: AnyObject, Subject> = (
+    assignTo: Pointee,
+    ReferenceWritableKeyPath<Pointee, Subject>
+)
+% for keypath_value_type in ['Subject', 'Subject?']:
+
+@discardableResult
+@inlinable
+public func => <Subject, Pointee: AnyObject>(subject: Subject, assignment: AssignmentToReference<Pointee, ${keypath_value_type}>) -> Subject {
+    subject => { assignment.assignTo[keyPath: assignment.1] = $0 }
+}
+% end

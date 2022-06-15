@@ -1,0 +1,10 @@
+#!/usr/bin/env bash
+
+set -e
+
+DIR=$(cd "$(dirname "$BASH_SOURCE")" && pwd)
+
+curl -Ls https://raw.githubusercontent.com/apple/swift/main/utils/gyb.py -o "$DIR/gyb.py"
+chmod +x "$DIR/gyb.py"
+
+find "$DIR/.." -name '*.gyb' | while read file; do "$DIR/gyb.py" --line-directive '' -o "${file%.gyb}" "$file"; done
